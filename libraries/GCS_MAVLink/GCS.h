@@ -329,6 +329,7 @@ public:
     void send_mission_current(const class AP_Mission &mission, uint16_t seq);
 
     // common send functions
+    void send_instrumentation(void) const;
     void send_heartbeat(void) const;
     void send_meminfo(void);
     void send_fence_status() const;

@@ -4295,8 +4295,29 @@ void GCS_MAVLINK::handle_message(const mavlink_message_t &msg)
         break;
     }
 #endif
+
+    case MAVLINK_MSG_ID_INSTRUMENTATION:
+        void handle_instrumentation(const mavlink_message_t &msg);
+        handle_instrumentation(msg);
+        break;
     }
 
+}
+
+mavlink_instrumentation_t instrumentation_current_value;
+
+void handle_instrumentation(const mavlink_message_t &msg) {
+
+    mavlink_msg_instrumentation_decode(&msg, &instrumentation_current_value);
+    float tensao = instrumentation_current_value.tensao_bateria;
+    float corrente = instrumentation_current_value.corrente_bateria;
+    
+    hal.console->printf("[PIXHAWK-CONSOLE]TensaoBateria: %.2f\tCorrenteBateria: %.2f\n", tensao, corrente);
+
+    //!//Route to TELEM_PORT2(SERIAL_PORT2 )
+    //!mavlink_message_t msg_out;
+    //!mavlink_msg_instrumentation_encode(255, 0, &msg_out, &packet);
+    gcs().send_message(MSG_INSTRUMENTATION);
 }
 
 void GCS_MAVLINK::handle_common_mission_message(const mavlink_message_t &msg)
@@ -5856,11 +5877,32 @@ void GCS_MAVLINK::send_received_message_deprecation_warning(const char * message
     send_text(MAV_SEVERITY_INFO, "Received message (%s) is deprecated", message);
 }
 
+void GCS_MAVLINK::send_instrumentation() const {
+    //float tensao_bateria = 10;
+    //float corrente_bateria = 20;
+    //float corrente_bombordo = 30;
+    //float corrente_estibordo = 40;
+    //float corrente_painel = 50;
+
+    float tensao_bateria = instrumentation_current_value.tensao_bateria;
+    float corrente_bateria = instrumentation_current_value.corrente_bateria;
+    float corrente_bombordo = instrumentation_current_value.corrente_bombordo;
+    float corrente_estibordo = instrumentation_current_value.corrente_estibordo;
+    float corrente_painel = instrumentation_current_value.corrente_painel;
+
+    mavlink_msg_instrumentation_send(chan, tensao_bateria, corrente_bateria, corrente_bombordo, corrente_estibordo, corrente_painel);
+}
+
 bool GCS_MAVLINK::try_send_message(const enum ap_message id)
 {
     bool ret = true;
 
     switch(id) {
+
+    case MSG_INSTRUMENTATION:
+        CHECK_PAYLOAD_SIZE(INSTRUMENTATION);
+        send_instrumentation();
+        break;
 
     case MSG_ATTITUDE:
         CHECK_PAYLOAD_SIZE(ATTITUDE);
