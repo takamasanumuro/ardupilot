@@ -220,24 +220,24 @@ static void main_loop()
 #ifdef HAL_I2C_CLEAR_BUS
     // Clear all I2C Buses. This can be needed on some boards which
     // can get a stuck I2C peripheral on boot
-    ChibiOS::I2CBus::clear_all();
+    ChibiOS::I2CBus::clear_all(); //!Clears I2C buses
 #endif
 
 #if AP_HAL_SHARED_DMA_ENABLED
-    ChibiOS::Shared_DMA::init();
+    ChibiOS::Shared_DMA::init(); //!Initializes DMA drivers
 #endif
 
-    peripheral_power_enable();
+    peripheral_power_enable(); //!Initializes GPIO outputs
 
-    hal.serial(0)->begin(SERIAL0_BAUD);
+    hal.serial(0)->begin(SERIAL0_BAUD); //!USB
 
 #if (HAL_USE_SPI == TRUE) && defined(HAL_SPI_CHECK_CLOCK_FREQ)
     // optional test of SPI clock frequencies
     ChibiOS::SPIDevice::test_clock_freq();
 #endif
 
-    hal.analogin->init();
-    hal.scheduler->init();
+    hal.analogin->init(); //!Initializes ADC drivers
+    hal.scheduler->init(); //!Initializes the main loop scheduler
 
     /*
       run setup() at low priority to ensure CLI doesn't hang the
@@ -248,12 +248,12 @@ static void main_loop()
     if (stm32_was_watchdog_reset()) {
         // load saved watchdog data
         stm32_watchdog_load((uint32_t *)&utilInstance.persistent_data, (sizeof(utilInstance.persistent_data)+3)/4);
-        utilInstance.last_persistent_data = utilInstance.persistent_data;
+        utilInstance.last_persistent_data = utilInstance.persistent_data; //!Watchdog can save data for reboot
     }
 
-    schedulerInstance.hal_initialized();
+    schedulerInstance.hal_initialized(); //!Sets the HAL as initialized
 
-    g_callbacks->setup();
+    g_callbacks->setup(); //!Calls AP_Vehicle setup() method
 
 #if HAL_ENABLE_SAVE_PERSISTENT_PARAMS
     utilInstance.apply_persistent_params();
@@ -321,7 +321,7 @@ static void main_loop()
 void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
 {
 #if defined(HAL_EARLY_WATCHDOG_INIT) && !defined(DISABLE_WATCHDOG)
-    stm32_watchdog_init();
+    stm32_watchdog_init(); //!Initialize watchdog timers
     stm32_watchdog_pat();
 #endif
     /*
@@ -333,7 +333,7 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
      */
 
 #if HAL_USE_SERIAL_USB == TRUE
-    usb_initialise();
+    usb_initialise(); //!Initializes USB serial
 #endif
 
 #ifdef HAL_STDOUT_SERIAL
@@ -345,10 +345,10 @@ void HAL_ChibiOS::run(int argc, char * const argv[], Callbacks* callbacks) const
       USART_CR2_STOP1_BITS,
       0
     };
-    sdStart((SerialDriver*)&HAL_STDOUT_SERIAL, &stdoutcfg);
+    sdStart((SerialDriver*)&HAL_STDOUT_SERIAL, &stdoutcfg); //!Initializes STDOUT
 #endif
 
-    g_callbacks = callbacks;
+    g_callbacks = callbacks; //!Set AP_Vehicle callbacks
 
     //Takeover main
     main_loop();

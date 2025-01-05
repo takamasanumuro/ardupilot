@@ -17,7 +17,7 @@
 
 #define AP_PARAM_VEHICLE_NAME rover
 
-// Global parameter class.
+// Global parameter class. //!Behaves like a struct since all members are public and there are no methods.
 //
 class Parameters {
 public:
@@ -29,8 +29,11 @@ public:
     // The increment will prevent old parameters from being used incorrectly
     // by newer code.
     //
-    static const uint16_t k_format_version = 16;
+    static const uint16_t k_format_version = 16; //!Sentinel variable to prevent old parameters from being loaded when the layout changes.
+    //! A method compares the stored format version with the current format version. If they differ, the EEPROM is erased.
 
+
+    //!This enum is probably used due to C++'s lack of reflection since it has the sane names as the parameter variables, only prefixed with k_param_
     enum {
         // Layout version number, always key zero.
         //
@@ -290,7 +293,10 @@ public:
     ParametersG2(void);
 
     // var_info for holding Parameter information
-    static const struct AP_Param::GroupInfo var_info[];
+    static const struct AP_Param::GroupInfo var_info[]; //!Second block of parameters behaves like a class and must call setup_object_defaults() in its constructor. 
+    //!Object defaults are initialized by passing the address of the instance and of the static var_info array to the setup_object_defaults() method.
+
+    //!var_info does not change after initiliazation, which is also hardcoded. Therefore it is safe to use it as a static array.
 
     // whether to enforce acceptance of packets only from sysid_my_gcs
     AP_Int8 sysid_enforce;

@@ -45,7 +45,7 @@ bool StorageManager::last_io_failed;
   layout for peripherals
  */
 const StorageManager::StorageArea StorageManager::layout[STORAGE_NUM_AREAS] = {
-    { StorageParam,   0,     HAL_STORAGE_SIZE}
+    { StorageParam,   0,     HAL_STORAGE_SIZE} //!Storage type, offset and length
 };
 
 #else
@@ -59,7 +59,7 @@ const StorageManager::StorageArea StorageManager::layout[STORAGE_NUM_AREAS] = {
   On PX4v1 this gives 303 waypoints, 26 rally points and 38 fence points
   On Pixhawk this gives 718 waypoints, 46 rally points and 70 fence points
  */
-const StorageManager::StorageArea StorageManager::layout[STORAGE_NUM_AREAS] = {
+const StorageManager::StorageArea StorageManager::layout[STORAGE_NUM_AREAS] = { //!Layout is shared across all instances
 #if !APM_BUILD_COPTER_OR_HELI
     { StorageParam,   0,     1280}, // 0x500 parameter bytes
     { StorageMission, 1280,  2506},
@@ -106,7 +106,7 @@ const StorageManager::StorageArea StorageManager::layout[STORAGE_NUM_AREAS] = {
 /*
   erase all storage
  */
-void StorageManager::erase(void)
+void StorageManager::erase(void) //!Just a wrapper around the underlying storage erase function
 {
     if (!hal.storage->erase()) {
         ::printf("StorageManager: erase failed\n");
@@ -120,7 +120,7 @@ StorageAccess::StorageAccess(StorageManager::StorageType _type) :
     type(_type) 
 {
     // calculate available bytes
-    total_size = 0;
+    total_size = 0; //!Logical size of the storage area. This is the sum of all the areas of the same type, even if they are not contiguous
 #if AP_SDCARD_STORAGE_ENABLED
     file = nullptr;
 #endif
@@ -138,7 +138,7 @@ StorageAccess::StorageAccess(StorageManager::StorageType _type) :
 */
 bool StorageAccess::read_block(void *data, uint16_t addr, size_t n) const
 {
-    uint8_t *b = (uint8_t *)data;
+    uint8_t *b = (uint8_t *)data; //!Byte pointer to the data buffer
 
 #if AP_SDCARD_STORAGE_ENABLED
     if (file != nullptr) {
@@ -146,7 +146,7 @@ bool StorageAccess::read_block(void *data, uint16_t addr, size_t n) const
         if (addr > file->bufsize) {
             return false;
         }
-        const size_t n2 = MIN(n, file->bufsize - addr);
+        const size_t n2 = MIN(n, file->bufsize - addr); //!Check to prevent reading out of bounds
         memcpy(b, &file->buffer[addr], n2);
         return n == n2;
     }

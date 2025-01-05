@@ -96,10 +96,11 @@ public:
         }
 #endif
 
-        AP_HAL::init();
+        AP_HAL::init(); 
     }
 
     struct Callbacks {
+        
         virtual void setup() = 0;
         virtual void loop() = 0;
     };

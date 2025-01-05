@@ -84,7 +84,7 @@
 
 class AP_DDS_Client;
 
-class AP_Vehicle : public AP_HAL::HAL::Callbacks {
+class AP_Vehicle : public AP_HAL::HAL::Callbacks { //! Callbacks requires implementation of setup() and loop()
 
 public:
 
@@ -92,7 +92,8 @@ public:
         if (_singleton) {
             AP_HAL::panic("Too many Vehicles");
         }
-        AP_Param::setup_object_defaults(this, var_info);
+        AP_Param::setup_object_defaults(this, var_info); //!Loads default values for scalar parameters for this object
+        //!In case of AP_Vehicle all parameters are subgroups, so this method does nothing in this case.
         _singleton = this;
     }
 
@@ -303,8 +304,8 @@ public:
 
 protected:
 
-    virtual void init_ardupilot() = 0;
-    virtual void load_parameters() = 0;
+    virtual void init_ardupilot() = 0; //!Vehicle specific code here
+    virtual void load_parameters() = 0; //!Vehicle specific parameters here
     void load_parameters(AP_Int16 &format_version, const uint16_t expected_format_version);
 
     virtual void set_control_channels() {}

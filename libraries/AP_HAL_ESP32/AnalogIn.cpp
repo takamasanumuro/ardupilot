@@ -439,4 +439,13 @@ AP_HAL::AnalogSource *AnalogIn::channel(int16_t ardupin)
     return nullptr;
 }
 
+AP_HAL::AnalogSource* AnalogIn::get_channel(int16_t pin) {
+    for (uint8_t j = 0; j < ANALOG_MAX_CHANNELS; j++) {
+        if (_channels[j] != nullptr && _channels[j]->_ardupin == pin) {
+            return _channels[j];
+        }
+    }
+    return nullptr;
+}
+
 #endif // HAL_USE_ADC

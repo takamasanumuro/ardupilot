@@ -83,6 +83,8 @@ void AP_ParamT<T, PT>::set_and_save_ifchanged(const T &v) {
 #pragma GCC diagnostic ignored "-Wfloat-equal"
     if (v == _value) {
 #pragma GCC diagnostic pop
+
+
         return;
     }
     set(v);

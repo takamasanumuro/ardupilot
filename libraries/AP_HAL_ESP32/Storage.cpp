@@ -23,6 +23,7 @@ using namespace ESP32;
 
 extern const AP_HAL::HAL& hal;
 
+//!Called automatically by read_block and write_block
 void Storage::_storage_open(void)
 {
     if (_initialised) {
@@ -32,7 +33,7 @@ void Storage::_storage_open(void)
     printf("%s:%d _storage_open \n", __PRETTY_FUNCTION__, __LINE__);
 #endif
     _dirty_mask.clearall();
-    p = esp_partition_find_first((esp_partition_type_t)0x45, ESP_PARTITION_SUBTYPE_ANY, nullptr);
+    p = esp_partition_find_first((esp_partition_type_t)0x45, ESP_PARTITION_SUBTYPE_ANY, nullptr); //!Partition defined in partitions.csv with 256KB size
     // load from storage backend
     _flash_load();
     _initialised = true;
@@ -58,6 +59,8 @@ void Storage::_mark_dirty(uint16_t loc, uint16_t length)
     }
 }
 
+//!Read and write methods for clients to use (StorageAccess)
+//!The save is asynchronous and is done by the storage thread
 void Storage::read_block(void *dst, uint16_t loc, size_t n)
 {
     if (loc >= sizeof(_buffer)-(n-1)) {
@@ -66,8 +69,8 @@ void Storage::read_block(void *dst, uint16_t loc, size_t n)
 #endif
         return;
     }
-    _storage_open();
-    memcpy(dst, &_buffer[loc], n);
+    _storage_open(); //!Must be called before reading from the storage
+    memcpy(dst, &_buffer[loc], n); //!Somehow this buffer is reflected to the storage
 }
 
 void Storage::write_block(uint16_t loc, const void *src, size_t n)
@@ -79,13 +82,13 @@ void Storage::write_block(uint16_t loc, const void *src, size_t n)
         return;
     }
     if (memcmp(src, &_buffer[loc], n) != 0) {
-        _storage_open();
-        memcpy(&_buffer[loc], src, n);
-        _mark_dirty(loc, n);
+        _storage_open(); //!Must be called before writing to the storage
+        memcpy(&_buffer[loc], src, n); //!The storage thread asynchronously writes the buffer to the storage
+        _mark_dirty(loc, n); //!Writing to a line marks it as dirty
     }
 }
 
-void Storage::_timer_tick(void)
+void Storage::_timer_tick(void) //!Called either on Storage thread or IO thread(linux) after scheduler is init
 {
     if (!_initialised) {
         return;
@@ -97,38 +100,39 @@ void Storage::_timer_tick(void)
 
     // write out the first dirty line. We don't write more
     // than one to keep the latency of this call to a minimum
-    uint16_t i;
-    for (i=0; i<STORAGE_NUM_LINES; i++) {
-        if (_dirty_mask.get(i)) {
+    uint16_t line;
+    for (line=0; line<STORAGE_NUM_LINES; line++) {
+        if (_dirty_mask.get(line)) { //!Bitmasks are used to signal which mavlink packets to send and which lines to store
             break;
         }
     }
-    if (i == STORAGE_NUM_LINES) {
+    if (line == STORAGE_NUM_LINES) {
         // this shouldn't be possible
         return;
     }
 
     // save to storage backend
-    _flash_write(i);
+    _flash_write(line);
 }
 
 /*
-  load all data from flash
+  load all data from flash //!Called from _storage_open inside [read|write]_block
  */
 void Storage::_flash_load(void)
 {
 #ifdef STORAGEDEBUG
     printf("%s:%d \n", __PRETTY_FUNCTION__, __LINE__);
 #endif
-    if (!_flash.init()) {
+    if (!_flash.init()) { //!Validates sectors and reads data from them
         AP_HAL::panic("unable to init flash storage");
     }
 }
 
 /*
   write one storage line. This also updates _dirty_mask.
-*/
-void Storage::_flash_write(uint16_t line)
+*/ //!Called by _timer_tick when dirty line is found
+//!_timer_tick is called by storage or io thread
+void Storage::_flash_write(uint16_t line) //!Calls Flash Driver, which then calls the provided write callback
 {
 #ifdef STORAGEDEBUG
     printf("%s:%d \n", __PRETTY_FUNCTION__, __LINE__);

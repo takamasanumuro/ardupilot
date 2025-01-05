@@ -123,10 +123,11 @@ HAL_ESP32::HAL_ESP32() :
     )
 {}
 
+//!In ESP32 implementation everything is initiated by the scheduler.init() method
 void HAL_ESP32::run(int argc, char * const argv[], Callbacks* callbacks) const
 {
     ((ESP32::Scheduler *)hal.scheduler)->set_callbacks(callbacks);
-    hal.scheduler->init();
+    hal.scheduler->init(); //!Creates the threads for the application
 }
 
 void AP_HAL::init()

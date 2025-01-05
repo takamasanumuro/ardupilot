@@ -16,7 +16,7 @@ public:
     AP_ADC_ADS1115();
     ~AP_ADC_ADS1115();
 
-    bool init();
+    bool init(); //!Obtains dev handle and registers periodic callback
     size_t read(adc_report_s *report, size_t length) const;
 
     uint8_t get_channels_number() const

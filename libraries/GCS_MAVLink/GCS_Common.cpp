@@ -128,6 +128,7 @@ GCS *GCS::_singleton = nullptr;
 GCS_MAVLINK_InProgress GCS_MAVLINK_InProgress::in_progress_tasks[1];
 uint32_t GCS_MAVLINK_InProgress::last_check_ms;
 
+//!UARTDriver and stream rates are injected via constructor
 GCS_MAVLINK::GCS_MAVLINK(GCS_MAVLINK_Parameters &parameters,
                          AP_HAL::UARTDriver &uart)
 {
@@ -383,6 +384,7 @@ void GCS_MAVLINK::send_battery_status(const uint8_t instance) const
                                     0, // battery mode
                                     battery.get_mavlink_fault_bitmask(instance));   // fault_bitmask
 }
+
 
 // returns true if all battery instances were reported
 bool GCS_MAVLINK::send_battery_status()
@@ -1289,6 +1291,7 @@ ap_message GCS_MAVLINK::next_deferred_bucket_message_to_send(uint16_t now16_ms)
     return (ap_message)next;
 }
 
+//!Call based on first set bit on the bitmask id
 // call try_send_message if appropriate.  Incorporates debug code to
 // record how long it takes to send a message.  try_send_message is
 // expected to be overridden, not this function.
@@ -1499,10 +1502,12 @@ void GCS_MAVLINK_InProgress::check_tasks()
     }
 }
 
+//!send_message : sets bitmask id to be sent
+//!do_try_send: sends the message based on the bitmask id
 void GCS_MAVLINK::update_send()
 {
 #if HAL_LOGGING_ENABLED
-    if (!hal.scheduler->in_delay_callback()) {
+    if (!hal.scheduler->in_delay_callback()) { //!Also processing Mavlink packets inside the registered callback
         // AP_Logger will not send log data if we are armed.
         AP::logger().handle_log_send();
     }
@@ -1520,7 +1525,7 @@ void GCS_MAVLINK::update_send()
 #endif
 
     // check for any in-progress tasks; check_tasks does its own rate-limiting
-    GCS_MAVLINK_InProgress::check_tasks();
+    GCS_MAVLINK_InProgress::check_tasks(); //!SDFormat and airspeed calibration
 
     const uint32_t start = AP_HAL::millis();
     const uint16_t start16 = start & 0xFFFF;
@@ -1792,7 +1797,7 @@ void GCS_MAVLINK::packetReceived(const mavlink_status_t &status,
     // we exclude radio packets because we historically used this to
     // make it possible to use the CLI over the radio
     if (msg.msgid != MAVLINK_MSG_ID_RADIO && msg.msgid != MAVLINK_MSG_ID_RADIO_STATUS) {
-        mavlink_active |= (1U<<(chan-MAVLINK_COMM_0));
+        mavlink_active |= (1U<<(chan-MAVLINK_COMM_0)); //!Bitmask of active channels
     }
     const auto mavlink_protocol = uartstate->get_protocol();
     if (!(status.flags & MAVLINK_STATUS_FLAG_IN_MAVLINK1) &&
@@ -1857,7 +1862,7 @@ GCS_MAVLINK::update_receive(uint32_t max_time_us)
               we have an alternative protocol handler installed and we
               haven't parsed a MAVLink packet for 4 seconds. Try
               parsing using alternative handler
-             */
+             */                        //!UartDriver
             if (alternative.handler(c, mavlink_comm_port[chan])) {
                 alternative.last_alternate_ms = now_ms;
                 gcs_alternative_active[chan] = true;
@@ -1897,7 +1902,7 @@ GCS_MAVLINK::update_receive(uint32_t max_time_us)
 
         if (parsed_packet || i % 100 == 0) {
             // make sure we don't spend too much time parsing mavlink messages
-            if (AP_HAL::micros() - tstart_us > max_time_us) {
+            if (AP_HAL::micros() - tstart_us > max_time_us) { //!1ms at most to process mavlink bytes
                 break;
             }
         }
@@ -2310,6 +2315,7 @@ void GCS_MAVLINK::send_scaled_pressure_instance(uint8_t instance, void (*send_fn
         have_data = true;
     }
 
+
     float press_diff = 0; // pascal
 #if AP_AIRSPEED_ENABLED
     AP_Airspeed *airspeed = AP_Airspeed::get_singleton();
@@ -2325,7 +2331,7 @@ void GCS_MAVLINK::send_scaled_pressure_instance(uint8_t instance, void (*send_fn
             }
         }
         have_data = true;
-    }
+
 #endif
 
     if (!have_data) {
@@ -2444,7 +2450,8 @@ void GCS::send_textv(MAV_SEVERITY severity, const char *fmt, va_list arg_list, u
         // filter destination ports to only allow active ports.
         statustext_t statustext{};
         if (update_send_has_been_called) {
-            statustext.bitmask = statustext_send_channel_mask();
+            statustext.bitmask =
+             statustext_send_channel_mask();
         } else {
             // we have not yet initialised the streaming-channel-mask,
             // which is done as part of the update() call.  So just send
@@ -2636,10 +2643,11 @@ void GCS_MAVLINK::service_statustext(void)
     }
 }
 
+//!Mark a message to be sent on all GCS_Mavlink backends
 void GCS::send_message(enum ap_message id)
 {
-    for (uint8_t i=0; i<num_gcs(); i++) {
-        chan(i)->send_message(id);
+    for (uint8_t i=0; i<num_gcs(); i++) { //!Send to all GCS_Mavlink backends
+        chan(i)->send_message(id); //!GCS_Mavlink represents a channel
     }
 }
 

@@ -278,7 +278,8 @@ void AP_WindVane::init(const AP_SerialManager& serial_manager)
 // update wind vane, expected to be called at 20hz
 void AP_WindVane::update()
 {
-    const bool have_speed = _speed_driver != nullptr;
+    const boo
+    l have_speed = _speed_driver != nullptr;
     const bool have_direction = _direction_driver != nullptr;
 
     // exit immediately if not enabled

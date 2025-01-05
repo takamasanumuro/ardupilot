@@ -202,8 +202,8 @@ public:
 
     void        update_receive(uint32_t max_time_us=1000);
     void        update_send();
-    bool        init(uint8_t instance);
-    void        send_message(enum ap_message id);
+    bool        init(uint8_t instance); //!Initialize UART and set up the MAVLink channel
+    void        send_message(enum ap_message id); //!Sets bit on the bitmask for the message to be sent
     void        send_text(MAV_SEVERITY severity, const char *fmt, ...) const FMT_PRINTF(3, 4);
     void        queued_param_send();
     void        queued_mission_request_send();

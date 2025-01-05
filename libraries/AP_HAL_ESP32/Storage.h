@@ -22,6 +22,7 @@
 
 #include "esp_partition.h"
 
+#define HAL_STORAGE_SIZE (16384)//!Storage size
 #define STORAGE_SIZE HAL_STORAGE_SIZE
 #define STORAGE_SECTOR_SIZE (128*1024)
 
@@ -34,7 +35,7 @@ class ESP32::Storage : public AP_HAL::Storage
 {
 public:
     void init() override {}
-    void read_block(void *dst, uint16_t src, size_t n) override;
+    void read_block(void *dst, uint16_t src, size_t n) override; //!Called by StorageAccess
     void write_block(uint16_t dst, const void* src, size_t n) override;
 
     void _timer_tick(void) override;
@@ -46,9 +47,10 @@ private:
     const esp_partition_t *p;
     void _storage_open(void);
     void _mark_dirty(uint16_t loc, uint16_t length);
-    uint8_t _buffer[STORAGE_SIZE] __attribute__((aligned(4)));
+    uint8_t _buffer[STORAGE_SIZE] __attribute__((aligned(4))); //!Shared with FlashStorage
     Bitmask<STORAGE_NUM_LINES> _dirty_mask;
 
+    //!Callbacks to the flash storage instance
     bool _flash_write_data(uint8_t sector, uint32_t offset, const uint8_t *data, uint16_t length);
     bool _flash_read_data(uint8_t sector, uint32_t offset, uint8_t *data, uint16_t length);
     bool _flash_erase_sector(uint8_t sector);

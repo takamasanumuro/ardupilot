@@ -23,6 +23,7 @@ public:
     AP_RPM_Params(void);
 
     // parameters for each instance
+    //!Parameters are default initialized via setup_object_defaults called inside the constructor
     AP_Int8  type;
     AP_Int8  pin;
     AP_Float scaling;
@@ -36,6 +37,9 @@ public:
 #if AP_RPM_DRONECAN_ENABLED || defined(HAL_PERIPH_ENABLE_RPM_STREAM)
     AP_Int8 dronecan_sensor_id;
 #endif
+    //!Each class that contains parameters must have the metadata array var_info[].
+    //!Each GroupInfo structure inside the array contains a name, address of the member variable 
+    //!inside the instance of the class and default value for the parameter.
     static const struct AP_Param::GroupInfo var_info[];
 
 };

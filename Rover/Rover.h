@@ -136,7 +136,7 @@ private:
     RC_Channel *channel_pitch;
     RC_Channel *channel_walking_height;
 
-    // flight modes convenience array
+    // flight modes convenience array //!Loose array of parameters?
     AP_Int8 *modes;
     const uint8_t num_modes = 6;
 

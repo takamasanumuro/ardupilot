@@ -71,20 +71,26 @@ public:
     };
 
     // parameters for each instance
+    //!Array of parameters for each active instance
     AP_RPM_Params _params[RPM_MAX_INSTANCES];
 
-    static const struct AP_Param::GroupInfo var_info[];
+    //!Static array as there is only one instance of the AP_RPM class, which deals with all the RPM sensors implementations
+    static const struct AP_Param::GroupInfo var_info[]; //!Every library must have the metadata array var_info[] for its parameters. It localizes the name, address of the member variables for the instance and default values for each.
+
 
     // Return the number of rpm sensor instances
     uint8_t num_sensors(void) const {
         return num_instances;
     }
 
+    //!Scheduling can be done as part of the default loops or as a separate task
+    //!Peripherals that have internal buffers can be run inside the main loop
+
     // detect and initialise any available rpm sensors
-    void init(void);
+    void init(void); //!Every library must have an init method
 
     // update state of all rpm sensors. Should be called from main loop
-    void update(void);
+    void update(void); //!Every library must have an update method
 
     /*
       return RPM for a sensor. Return -1 if not healthy
@@ -117,7 +123,7 @@ private:
 
     static AP_RPM *_singleton;
 
-    RPM_State state[RPM_MAX_INSTANCES];
+    RPM_State state[RPM_MAX_INSTANCES]; //Each active backend driver will update the state of its index
     AP_RPM_Backend *drivers[RPM_MAX_INSTANCES];
     uint8_t num_instances;
 

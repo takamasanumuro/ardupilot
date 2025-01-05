@@ -66,6 +66,7 @@ void Scheduler::wdt_init(uint32_t timeout, uint32_t core_mask)
     }
 }
 
+//!Main application begins here
 void Scheduler::init()
 {
 
@@ -80,32 +81,39 @@ void Scheduler::init()
     #define FASTCPU 0
     #define SLOWCPU 1
 
-    // pin main thread to Core 0, and we'll also pin other heavy-tasks to core 1, like wifi-related.
+    //!Initializes analogIN, RCOut, calls AP_Vehicle (Rover, Copter, etc) setup and loop functions
+    //!Setup: Parameter loading, Scheduler task fetching, GCS, Vehicle specific code (init_ardupilot)
+    //!Loop: Vehicle loop, which in turn calls Scheduler loop(runs the tasks) and does error checking
     if (xTaskCreatePinnedToCore(_main_thread, "APM_MAIN", Scheduler::MAIN_SS, this, Scheduler::MAIN_PRIO, &_main_task_handle,FASTCPU) != pdPASS) {
+    // pin main thread to Core 0, and we'll also pin other heavy-tasks to core 1, like wifi-related.
     //if (xTaskCreate(_main_thread, "APM_MAIN", Scheduler::MAIN_SS, this, Scheduler::MAIN_PRIO, &_main_task_handle) != pdPASS) {
         hal.console->printf("FAILED to create task _main_thread on FASTCPU\n");
     } else {
     	hal.console->printf("OK created task _main_thread on FASTCPU\n");
     }
 
+    //!Calls ADC tick and registered timer processes
     if (xTaskCreatePinnedToCore(_timer_thread, "APM_TIMER", TIMER_SS, this, TIMER_PRIO, &_timer_task_handle,FASTCPU) != pdPASS) {
         hal.console->printf("FAILED to create task _timer_thread on FASTCPU\n");
     } else {
     	hal.console->printf("OK created task _timer_thread on FASTCPU\n");
     }	
 
+    //!Calls timer tick for RCOut
     if (xTaskCreatePinnedToCore(_rcout_thread, "APM_RCOUT", RCOUT_SS, this, RCOUT_PRIO, &_rcout_task_handle,SLOWCPU) != pdPASS) {
        hal.console->printf("FAILED to create task _rcout_thread on SLOWCPU\n");
     } else {
        hal.console->printf("OK created task _rcout_thread on SLOWCPU\n");
     }
 
+    //!Calls timer tick for RCIn
     if (xTaskCreatePinnedToCore(_rcin_thread, "APM_RCIN", RCIN_SS, this, RCIN_PRIO, &_rcin_task_handle,SLOWCPU) != pdPASS) {
        hal.console->printf("FAILED to create task _rcin_thread on SLOWCPU\n");
     } else {
        hal.console->printf("OK created task _rcin_thread on SLOWCPU\n");
     }
 
+    //!Calls timer tick for each UART
     // pin this thread to Core 1 as it keeps all teh uart/s feed data, and we need that quick.
     if (xTaskCreatePinnedToCore(_uart_thread, "APM_UART", UART_SS, this, UART_PRIO, &_uart_task_handle,FASTCPU) != pdPASS) {
         hal.console->printf("FAILED to create task _uart_thread on FASTCPU\n");
@@ -113,6 +121,7 @@ void Scheduler::init()
     	hal.console->printf("OK created task _uart_thread on FASTCPU\n");
     }	  
 
+    //!Calls IO processes and mounts the SD card
     // we put thos on the SLOW core as it mounts the sd card, and that often isn't conencted.
     if (xTaskCreatePinnedToCore(_io_thread, "SchedulerIO:APM_IO", IO_SS, this, IO_PRIO, &_io_task_handle,SLOWCPU) != pdPASS) {
         hal.console->printf("FAILED to create task _io_thread on SLOWCPU\n");
@@ -120,6 +129,7 @@ void Scheduler::init()
         hal.console->printf("OK created task _io_thread on SLOWCPU\n");
     }	 
 
+    //!Calls flash storage timer tick for any pending writes
     if (xTaskCreatePinnedToCore(_storage_thread, "APM_STORAGE", STORAGE_SS, this, STORAGE_PRIO, &_storage_task_handle,SLOWCPU) != pdPASS) { //no actual flash writes without this, storage kinda appears to work, but does an erase on every boot and params don't persist over reset etc.
         hal.console->printf("FAILED to create task _storage_thread\n");
     } else {
@@ -317,6 +327,7 @@ void IRAM_ATTR Scheduler::_timer_thread(void *arg)
 #endif
     while (true) {
         sched->delay_microseconds(1000);
+        //!Runs timer processes mainly by shared library objects and ADS1115 update
         sched->_run_timers();
         //analog in
 #ifndef HAL_DISABLE_ADC_DRIVER
@@ -339,12 +350,13 @@ void IRAM_ATTR Scheduler::_rcout_thread(void* arg)
     }
 }
 
+//!Called from timer thread
 void IRAM_ATTR Scheduler::_run_timers()
 {
 #ifdef SCHEDULERDEBUG
     printf("%s:%d start \n", __PRETTY_FUNCTION__, __LINE__);
 #endif
-    if (_in_timer_proc) {
+    if (_in_timer_proc) { //!If already in timer process, return
         return;
     }
 #ifdef SCHEDULERDEBUG
@@ -355,19 +367,19 @@ void IRAM_ATTR Scheduler::_run_timers()
     int num_procs = 0;
 
     _timer_sem.take_blocking();
-    num_procs = _num_timer_procs;
+    num_procs = _num_timer_procs; //!In case a new timer process is added while reading the number of timer processes
     _timer_sem.give();
 
     // now call the timer based drivers
     for (int i = 0; i < num_procs; i++) {
         if (_timer_proc[i]) {
-            _timer_proc[i]();
+            _timer_proc[i](); //!Invoke registered timer processes
         }
     }
 
     // and the failsafe, if one is setup
     if (_failsafe != nullptr) {
-        _failsafe();
+        _failsafe(); //!Registered by init_ardupilot() using scheduler->register_timer_failsafe(failsafe_check_static, 1000);
     }
 
     _in_timer_proc = false;
@@ -428,6 +440,7 @@ void IRAM_ATTR Scheduler::_io_thread(void* arg)
     uint32_t last_sd_start_ms = AP_HAL::millis();
     while (true) {
         sched->delay_microseconds(1000);
+        //!Runs save_io_handler to save params inside the save queue, handle parameter read requests.
         // run registered IO processes
         sched->_run_io();
 
@@ -443,7 +456,7 @@ void IRAM_ATTR Scheduler::_io_thread(void* arg)
     }
 }
 
-
+//!For ESP32 Storage has its own dedicated thread. In Linux it belongs to the IO thread.
 void Scheduler::_storage_thread(void* arg)
 {
 #ifdef SCHEDDEBUG
@@ -459,7 +472,7 @@ void Scheduler::_storage_thread(void* arg)
     while (true) {
         sched->delay_microseconds(1000);
         // process any pending storage writes
-        hal.storage->_timer_tick();
+        hal.storage->_timer_tick(); //!Checks for dirty lines and writes them to flash
         //print_profile();
     }
 }
@@ -545,11 +558,11 @@ void IRAM_ATTR Scheduler::_main_thread(void *arg)
     Scheduler *sched = (Scheduler *)arg;
 
 #ifndef HAL_DISABLE_ADC_DRIVER
-    hal.analogin->init();
+    hal.analogin->init(); 
 #endif
     hal.rcout->init();
 
-    sched->callbacks->setup();
+    sched->callbacks->setup(); //!Parameter loading and scheduler tasks setup
 
     sched->set_system_initialized();
 
@@ -561,7 +574,7 @@ void IRAM_ATTR Scheduler::_main_thread(void *arg)
     printf("%s:%d initialised\n", __PRETTY_FUNCTION__, __LINE__);
 #endif
     while (true) {
-        sched->callbacks->loop();
+        sched->callbacks->loop(); //!Runs scheduler loop, that runs the tasks
         sched->delay_microseconds(250);
 
         // run stats periodically

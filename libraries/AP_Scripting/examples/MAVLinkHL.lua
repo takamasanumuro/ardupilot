@@ -125,7 +125,7 @@ local function MAVLinkProcessor()
         if #_mavbuffer == 1 and string.byte(_mavbuffer, 1) == PROTOCOL_MARKER_V1 and
             _mavdecodestate == 0 then
             -- we have a packet start
-            _mavdecodestate = 1
+            _mavdecodestate = 1 --!Initialize state machine
             return
         end
 

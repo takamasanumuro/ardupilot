@@ -56,7 +56,7 @@ function mavport:writestring(str)
         if count == SERIAL_CONTROL_DATA_LEN then break end
         count = count + 1
         buf[count] = str:byte(ci)
-    end
+    end 
     local sent = count - self._tx_count
     self._tx_count = count
 

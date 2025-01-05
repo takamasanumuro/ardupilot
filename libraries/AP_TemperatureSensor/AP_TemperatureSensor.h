@@ -68,8 +68,8 @@ public:
     AP_TemperatureSensor_Params::Source get_source(const uint8_t instance = AP_TEMPERATURE_SENSOR_PRIMARY_INSTANCE) const;
     int32_t get_source_id(const uint8_t instance = AP_TEMPERATURE_SENSOR_PRIMARY_INSTANCE) const;
 
-    static const struct AP_Param::GroupInfo var_info[];
-    static const struct AP_Param::GroupInfo *backend_var_info[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
+    static const struct AP_Param::GroupInfo var_info[]; //!Generic parameters/ Frontend parameters for any strategy
+    static const struct AP_Param::GroupInfo *backend_var_info[AP_TEMPERATURE_SENSOR_MAX_INSTANCES]; //!Specific parameters for each strategy
 
 protected:
     // parameters
@@ -79,15 +79,15 @@ private:
     static AP_TemperatureSensor *_singleton;
 
     // The TemperatureSensor_State structure is filled in by the backend driver
-    struct TemperatureSensor_State {
+    struct TemperatureSensor_State { //! Filled by specific strategy when instantiated
         uint32_t    last_time_ms;              // time when the sensor was last read in milliseconds
         float       temperature;               // temperature (deg C)
         uint8_t     instance;                  // instance number
-        const struct AP_Param::GroupInfo *var_info; 
+        const struct AP_Param::GroupInfo *var_info;  //! Refers to the implementation specific var_info
     };
 
-    TemperatureSensor_State _state[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
-    AP_TemperatureSensor_Backend *drivers[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
+    TemperatureSensor_State _state[AP_TEMPERATURE_SENSOR_MAX_INSTANCES]; //!Holds value, timestamp, instance and implementation parameters
+    AP_TemperatureSensor_Backend *drivers[AP_TEMPERATURE_SENSOR_MAX_INSTANCES]; //!Holds instantiated temperature strategies
 
     uint8_t     _num_instances;         // number of temperature sensors
 

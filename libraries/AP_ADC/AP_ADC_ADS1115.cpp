@@ -113,7 +113,7 @@ AP_ADC_ADS1115::AP_ADC_ADS1115()
     , _gain(ADS1115_PGA_4P096)
     , _channel_to_read(0)
 {
-    _samples = NEW_NOTHROW adc_report_s[_channels_number];
+    _samples = NEW_NOTHROW adc_report_s[_channels_number]; //!Contains id and data
 }
 
 AP_ADC_ADS1115::~AP_ADC_ADS1115()
@@ -150,6 +150,7 @@ bool AP_ADC_ADS1115::_start_conversion(uint8_t channel)
     return _dev->transfer((uint8_t *)&config, sizeof(config), nullptr, 0);
 }
 
+//!Copy-Extract the data to the report
 size_t AP_ADC_ADS1115::read(adc_report_s *report, size_t length) const
 {
     for (size_t i = 0; i < length; i++) {
@@ -200,6 +201,7 @@ float AP_ADC_ADS1115::_convert_register_data_to_mv(int16_t word) const
     return (float) word * pga;
 }
 
+//!Registered periodic callback called at 10Hz
 void AP_ADC_ADS1115::_update()
 {
     uint8_t config[2];

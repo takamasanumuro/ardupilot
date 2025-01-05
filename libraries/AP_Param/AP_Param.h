@@ -124,7 +124,7 @@
 // a variant of offsetof() to work around C++ restrictions.
 // this can only be used when the offset of a variable in a object
 // is constant and known at compile time
-#define AP_VAROFFSET(type, element) (((ptrdiff_t)(&((const type *)1)->element))-1)
+#define AP_VAROFFSET(type, element) (((ptrdiff_t) (&((const type *)1)->element)) - 1)
 
 // find the type of a variable given the class and element
 #define AP_CLASSTYPE(clazz, element) ((uint8_t)(((const clazz *) 1)->element.vtype))
@@ -174,7 +174,7 @@
 #define PARAM_VEHICLE_INFO                   { "",   (const void *)&AP_PARAM_VEHICLE_NAME,         {group_info : AP_Vehicle::var_info}, 0,                                                  Parameters::k_param_vehicle,        AP_PARAM_GROUP }
 #define AP_VAREND                            { "",   nullptr,                                      {group_info : nullptr },             0,                                                  0,                                  AP_PARAM_NONE }
 
-
+//!This enumeration is used for casting elements and defining storage when saving to FRAM.
 enum ap_var_type {
     AP_PARAM_NONE    = 0,
     AP_PARAM_INT8,
@@ -237,15 +237,15 @@ public:
 
     // called once at startup to setup the _var_info[] table. This
     // will also check the EEPROM header and re-initialise it if the
-    // wrong version is found
-    static bool setup();
+    // wrong version is found 
+    static bool setup(); //!Called from setup_sketch_defaults, which gets called by AP_Vehicle::Setup()
 
     // constructor with var_info
-    AP_Param(const struct Info *info)
+    AP_Param(const struct Info *info) //!Rover uses this constructor inside its own constructor to initialize _var_info[]
     {
-        _var_info = info;
+        _var_info = info; //!Sets static _var_info(library) to the Rover var_info ( implementation)
         uint16_t i;
-        for (i=0; info[i].type != AP_PARAM_NONE; i++) ;
+        for (i=0; info[i].type != AP_PARAM_NONE; i++) ; //!Number of parameters in Rover var_info
         _num_vars = i;
 #if AP_PARAM_DYNAMIC_ENABLED
         _num_vars_base = _num_vars;
@@ -648,12 +648,14 @@ private:
  *
  *  - type: the ap_var_type value for the variable
  */
+
+    //!
     struct Param_header {
         // to get 9 bits for key we needed to split it into two parts to keep binary compatibility
-        uint32_t key_low : 8;
-        uint32_t type : 5;
-        uint32_t key_high : 1;
-        uint32_t group_element : 18;
+        uint32_t key_low : 8; //! k_param_enum value low inside Parameter.h
+        uint32_t type : 5; //! ap_var_type 
+        uint32_t key_high : 1; //! k_param_enum value high inside Parameter.h
+        uint32_t group_element : 18; //! Zero for top level parameters, otherwise divided into 3 lots of 6 bits
     };
     static_assert(sizeof(struct Param_header) == 4, "Bad Param_header size!");
 

@@ -35,6 +35,15 @@
 #include "version.h"
 #undef FORCE_VERSION_H_INCLUDE
 
+//!This retrieves the hardware specific HAL object.
+//!Options:
+//!- HAL_BOARD_CHIBIOS
+//!- HAL_BOARD_LINUX
+//!- HAL_BOARD_ESP32
+//!- HAL_BOARD_SITL
+//!- HAL_BOARD_QURT
+//!The retrieved object has a run method that takes a Callbacks object, which is implemented by any AP_Vehicle object.
+//!This means that the vehicle object is the main object that is run by the HAL with its setup() and loop() methods.
 const AP_HAL::HAL& hal = AP_HAL::get_HAL();
 
 #define SCHED_TASK(func, _interval_ticks, _max_time_micros, _priority) SCHED_TASK_CLASS(Rover, &rover, func, _interval_ticks, _max_time_micros, _priority)
@@ -139,7 +148,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
 #endif
 };
 
-
+//!Passed to the scheduler during setup() to run the tasks defined in the scheduler_tasks array.
 void Rover::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
                                 uint8_t &task_count,
                                 uint32_t &log_bit)
@@ -152,9 +161,9 @@ void Rover::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
 constexpr int8_t Rover::_failsafe_priorities[7];
 
 Rover::Rover(void) :
-    AP_Vehicle(),
-    param_loader(var_info),
-    modes(&g.mode1),
+    AP_Vehicle(), //! Loads GroupInfo parameters from AP_Vehicle::var_info
+    param_loader(var_info), //!Loads Info parameters from Rover::var_info. This is where _num_vars is determined.
+    modes(&g.mode1), //!Loose array of parameters?
     control_mode(&mode_initializing)
 {
 }
@@ -511,7 +520,7 @@ bool Rover::get_wp_crosstrack_error_m(float &xtrack_error) const
 }
 
 
-Rover rover;
-AP_Vehicle& vehicle = rover;
+Rover rover; //!Param Loader, Modes, and Control Mode are loaded here.
+AP_Vehicle& vehicle = rover; //!Used in AP_Vehicle.cpp
 
 AP_HAL_MAIN_CALLBACKS(&rover);

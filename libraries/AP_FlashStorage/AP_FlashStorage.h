@@ -42,10 +42,10 @@
 /*
   we support 3 different types of flash which have different restrictions
  */
-#define AP_FLASHSTORAGE_TYPE_F1  1 // F1 and F3
-#define AP_FLASHSTORAGE_TYPE_F4  2 // F4 and F7
-#define AP_FLASHSTORAGE_TYPE_H7  3 // H7
-#define AP_FLASHSTORAGE_TYPE_G4  4 // G4
+#define AP_FLASHSTORAGE_TYPE_F1  1 // F1 and F3 //!16 byte chunk, all 1
+#define AP_FLASHSTORAGE_TYPE_F4  2 // F4 and F7 //! Can update bits from 1 to 0
+#define AP_FLASHSTORAGE_TYPE_H7  3 // H7 //!32 byte chunk, all 1
+#define AP_FLASHSTORAGE_TYPE_G4  4 // G4 //!8 byte chunk, all 1
 
 #ifndef AP_FLASHSTORAGE_TYPE
 #if defined(STM32F1) || defined(STM32F3)
@@ -89,7 +89,7 @@ private:
     static const uint8_t block_size = 8;
     static const uint8_t max_write = 64;
 #endif
-    static const uint16_t num_blocks = (HAL_STORAGE_SIZE+(block_size-1)) / block_size;
+    static const uint16_t num_blocks = (HAL_STORAGE_SIZE+(block_size-1)) / block_size; //!Adds an additional block if not divisible by block size
 
 public:
     // caller provided function to write to a flash sector
@@ -142,7 +142,7 @@ private:
     FlashEraseOK flash_erase_ok;
 
     uint8_t current_sector;
-    uint32_t write_offset;
+    uint32_t write_offset; //!Updated to point to first available block header
     uint32_t reserved_space;
     bool write_error;
 
@@ -168,8 +168,8 @@ private:
     };
 
     // header in first word of each sector
-    struct sector_header {
-#if AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_F4
+    struct sector_header { //!Size of header depends on flash memory architecture
+#if AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_F4 //!Most generic one
         uint32_t state1:8;
         uint32_t signature1:24;
 #elif AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_F1
@@ -209,9 +209,9 @@ private:
     
     // header of each block of data
     struct block_header {
-        uint16_t state:2;
-        uint16_t block_num:11;
-        uint16_t num_blocks_minus_one:3;
+        uint16_t state:2; //!Available, writing or valid
+        uint16_t block_num:11; //!Location of block in storage
+        uint16_t num_blocks_minus_one:3; //!To save space without requiring an additional bit
     };
 
     // amount of space needed to write full storage

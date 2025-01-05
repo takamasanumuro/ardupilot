@@ -135,10 +135,10 @@ bool I2CDevice::transfer(const uint8_t *send, uint32_t send_len,
 
 /*
   register a periodic callback
-*/
+*/                                                                                          //!Functor bind member macro used for the call
 AP_HAL::Device::PeriodicHandle I2CDevice::register_periodic_callback(uint32_t period_usec, AP_HAL::Device::PeriodicCb cb)
 {
-    return bus.register_periodic_callback(period_usec, cb, this);
+    return bus.register_periodic_callback(period_usec, cb, this); //!The device just passes itself and the callback to the bus to which it belongs
 }
 
 

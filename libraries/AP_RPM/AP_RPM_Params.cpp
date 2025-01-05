@@ -94,5 +94,7 @@ const AP_Param::GroupInfo AP_RPM_Params::var_info[] = {
 
 AP_RPM_Params::AP_RPM_Params(void)
 {
+    //!The instance passes its own address and the address of the metadata array to the setup_object_defaults function.
+    //!This function initializes the parameters with the default values from the metadata array. 
     AP_Param::setup_object_defaults(this, var_info);
 }

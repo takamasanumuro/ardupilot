@@ -25,17 +25,17 @@ public:
     AnalogIn_ADS1115();
 
     void init() override;
-    AP_HAL::AnalogSource *channel(int16_t n) override;
+    AP_HAL::AnalogSource *channel(int16_t pin) override; //!Allocates a new AnalogSource_ADS1115 object and returns it
 
     /* Board voltage is not available */
     float board_voltage() override { return 5.0f; }
 
 private:
     uint8_t _channels_number;
-    void _update();
+    void _update(); //!Called periodically from registered_timer_process inside timer thread
 
-    AP_ADC_ADS1115 *_adc;
-    AnalogSource_ADS1115 *_channels[ADS1115_ADC_MAX_CHANNELS];
+    AP_ADC_ADS1115 *_adc; //!Driver itself
+    AnalogSource_ADS1115 *_channels[ADS1115_ADC_MAX_CHANNELS]; //!Readings get put here
     uint32_t _last_update_timestamp;
     HAL_Semaphore _semaphore;
 };

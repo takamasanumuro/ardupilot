@@ -32,6 +32,7 @@
                                             APM_BUILD_TYPE(APM_BUILD_AntennaTracker) || APM_BUILD_TYPE(APM_BUILD_Blimp))
 #endif
 
+#define AP_AIRSPEED_DUMMY_METHODS_ENABLED 0
 #if !AP_AIRSPEED_DUMMY_METHODS_ENABLED
 
 #include <AP_Common/AP_Common.h>

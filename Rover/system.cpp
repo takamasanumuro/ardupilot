@@ -5,10 +5,12 @@ static void failsafe_check_static()
     rover.failsafe_check();
 }
 
-void Rover::init_ardupilot()
+//!Called from main thread inside AP_Vehicle::setup() implementation
+void Rover::init_ardupilot() //! Vehicle specific initialization can be done here, mainly library objects
+//! Specific AP_Vehicles must not override setup() and loop()
 {
     // initialise notify system
-    notify.init();
+    notify.init(); //!First to get started to allow debug messages to be sent
     notify_mode(control_mode);
 
     battery.init();
@@ -84,6 +86,7 @@ void Rover::init_ardupilot()
     // initialise optical flow sensor
     optflow.init(MASK_LOG_OPTFLOW);
 #endif      // AP_OPTICALFLOW_ENABLED
+
 
 #if AP_RELAY_ENABLED
     relay.init();

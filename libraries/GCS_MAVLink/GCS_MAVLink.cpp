@@ -1,4 +1,4 @@
-/*
+|/*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
@@ -132,7 +132,8 @@ uint16_t comm_get_txspace(mavlink_channel_t chan)
  */
 void comm_send_buffer(mavlink_channel_t chan, const uint8_t *buf, uint8_t len)
 {
-    if (!valid_channel(chan) || mavlink_comm_port[chan] == nullptr || chan_discard[chan]) {
+    if (!valid_channel(chan) || mavlink_
+    comm_port[chan] == nullptr || chan_discard[chan]) {
         return;
     }
 #if HAL_HIGH_LATENCY2_ENABLED

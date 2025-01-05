@@ -98,6 +98,7 @@ private:
     // newly-created thread
     uint8_t calculate_thread_priority(priority_base base, int8_t priority) const;
 
+    //!In Linux threads are objects inside Scheduler. In ESP32 they are free functions called by FreeRTOS.
     SchedulerThread _timer_thread{FUNCTOR_BIND_MEMBER(&Scheduler::_timer_task, void), *this};
     SchedulerThread _io_thread{FUNCTOR_BIND_MEMBER(&Scheduler::_io_task, void), *this};
     SchedulerThread _rcin_thread{FUNCTOR_BIND_MEMBER(&Scheduler::_rcin_task, void), *this};

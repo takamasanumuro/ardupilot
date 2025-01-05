@@ -271,7 +271,7 @@ const AP_Param::GroupInfo AP_Vehicle::var_info[] = {
 #if HAL_LOGGING_ENABLED
     // @Group: LOG
     // @Path: ../AP_Logger/AP_Logger.cpp
-    AP_SUBGROUPINFO(logger, "LOG",  29, AP_Vehicle, AP_Logger),
+    AP_SUBGROUPINFO(logger, "LOG",  29, AP_Vehicle, AP_Logger)E,
 #endif
 
 #if AP_GRIPPER_ENABLED
@@ -293,7 +293,7 @@ const AP_Param::GroupInfo AP_Vehicle::var_info[] = {
 #if APM_BUILD_TYPE(APM_BUILD_UNKNOWN) || APM_BUILD_TYPE(APM_BUILD_AP_Periph)
 AP_Vehicle& vehicle = *AP_Vehicle::get_singleton();
 #else
-extern AP_Vehicle& vehicle;
+extern AP_Vehicle& vehicle; //!Seems to be initialized in [Rover/Blimp/Copter/...].cpp
 #endif
 
 /*
@@ -302,7 +302,8 @@ extern AP_Vehicle& vehicle;
 void AP_Vehicle::setup()
 {
     // load the default values of variables listed in var_info[]
-    AP_Param::setup_sketch_defaults();
+    //!Loads default values using RAM
+    AP_Param::setup_sketch_defaults(); 
 
 #if AP_SERIALMANAGER_ENABLED
     // initialise serial port
@@ -320,8 +321,8 @@ void AP_Vehicle::setup()
 
     // validate the static parameter table, then load persistent
     // values from storage:
-    AP_Param::check_var_info();
-    load_parameters();
+    AP_Param::check_var_info(); //!Parameters already populated in _var_info[] are checked for consistency
+    load_parameters(); //!Vehicle specific implementation
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
     if (AP_BoardConfig::get_sdcard_slowdown() != 0) {
@@ -336,7 +337,7 @@ void AP_Vehicle::setup()
     const AP_Scheduler::Task *tasks;
     uint8_t task_count;
     uint32_t log_bit;
-    get_scheduler_tasks(tasks, task_count, log_bit);
+    get_scheduler_tasks(tasks, task_count, log_bit); //!Vehicle specific tasks are populated here via this virtual methodq
     AP::scheduler().init(tasks, task_count, log_bit);
 
     // time per loop - this gets updated in the main loop() based on
@@ -380,7 +381,7 @@ void AP_Vehicle::setup()
 #if AP_SCHEDULER_ENABLED
     // Register scheduler_delay_cb, which will run anytime you have
     // more than 5ms remaining in your call to hal.scheduler->delay
-    hal.scheduler->register_delay_callback(scheduler_delay_callback, 5);
+    hal.scheduler->register_delay_callback(scheduler_delay_callback, 5); //!Mavlink gets processed here
 #endif
 
 #if HAL_MSP_ENABLED
@@ -418,7 +419,7 @@ void AP_Vehicle::setup()
 #endif
 
     // init_ardupilot is where the vehicle does most of its initialisation.
-    init_ardupilot();
+    init_ardupilot(); //!Vehicle specific initialization should be done here
 
 #if AP_SCRIPTING_ENABLED
     scripting.init();
@@ -691,7 +692,7 @@ void AP_Vehicle::get_common_scheduler_tasks(const AP_Scheduler::Task*& tasks, ui
  *  MAVLink to process packets while waiting for the initialisation to
  *  complete
  */
-void AP_Vehicle::scheduler_delay_callback()
+void AP_Vehicle::scheduler_delay_callback() //!Mavlink entry point registered via scheduler->register_delay_callback inside AP_Setup (main thread) inside scheduler.init()
 {
 #if APM_BUILD_TYPE(APM_BUILD_Replay)
     // compass.init() delays, so we end up here.
@@ -704,7 +705,8 @@ void AP_Vehicle::scheduler_delay_callback()
     AP_Logger &logger = AP::logger();
 
     // don't allow potentially expensive logging calls:
-    logger.EnableWrites(false);
+    logger.Enable
+    Writes(false);
 #endif
 
     const uint32_t tnow = AP_HAL::millis();

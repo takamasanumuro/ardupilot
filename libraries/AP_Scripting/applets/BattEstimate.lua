@@ -16,16 +16,20 @@ local PARAM_TABLE_PREFIX = "BATT_SOC"
 function bind_param(name)
    local p = Parameter()
    assert(p:init(name), string.format('could not find %s parameter', name))
+   --!Searches all parameters for {name}, so give it the fully quafilied name for the search, which includes the table prefix
    return p
 end
 
 -- add a parameter and bind it to a variable
 function bind_add_param(name, idx, default_value)
    assert(param:add_param(PARAM_TABLE_KEY, idx, name, default_value), string.format('could not add param %s', name))
+   --! Created a parameter BATT_SOC_{PARAMETER} with index {idx} and default value {default_value}
    return bind_param(PARAM_TABLE_PREFIX .. name)
+   --!Tries to extract BATT_SOC_{PARAMETER} parameter
 end
 
 -- setup quicktune specific parameters
+                      --!14,            "BATT_SOC",         32
 assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 32), 'could not add param table')
 
 --[[
@@ -35,8 +39,11 @@ assert(param:add_table(PARAM_TABLE_KEY, PARAM_TABLE_PREFIX, 32), 'could not add 
   // @Range: 0 4
   // @User: Standard
 --]]
+                                        --!name, idx, default
 local BATT_SOC_COUNT     = bind_add_param('_COUNT', 1, 0)
 
+--!The parameter is now added to the system. Now the user must set the initial SOC state so that the system can start estimating the SOC.
+--! A reboot will probably be required in order to reload the script and start the SOC estimation.  
 if BATT_SOC_COUNT:get() <= 0 then
    return
 end

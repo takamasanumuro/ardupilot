@@ -33,7 +33,7 @@ namespace ESP32
 class AnalogSource : public AP_HAL::AnalogSource
 {
 public:
-    friend class AnalogIn;
+    friend class AnalogIn; //!AnalogIn can call _add_value()  from timer_tick() to update the readings
     AnalogSource(int16_t ardupin, adc_channel_t adc_channel, float scaler, float initial_value);
     float read_average() override;
     float read_latest() override;
@@ -80,6 +80,7 @@ public:
 
     void init() override;
     AP_HAL::AnalogSource* channel(int16_t pin) override;
+    AP_HAL::AnalogSource* get_channel(int16_t pin);
     void _timer_tick();
     float board_voltage() override
     {

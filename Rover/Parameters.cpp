@@ -6,12 +6,38 @@
   Rover parameter definitions
 */
 
-const AP_Param::Info Rover::var_info[] = {
+//!AP_Param::Info contains the information needed to load and save a parameter from EEPROM.
+/*
+    Name: The name of the parameter
+    Location: Address of parameter in memory
+    Default: Default value of the parameter
+    Flags: Flags for the parameter which are used to interpret the union members
+    Key: The key used to identify the parameter in EEPROM. It is an unnamed enum inside Parameters.h which has the same name as the parameter variable, 
+    but prefixed with k_param_
+    Type: The type of the parameter, which is a named enum ap_var_type inside AP_Param.h.
+    Can be:
+    AP_PARAM_NONE
+    AP_PARAM_INT8
+    AP_PARAM_INT16
+    AP_PARAM_INT32
+    AP_PARAM_FLOAT
+    AP_PARAM_VECTOR3F
+    AP_PARAM_GROUP
+*/
+
+//!GSCALAR =  global parameter scalar, contained within Rover::g
+//!Global parameters live within Rover::g and AP_Param::Info array from Rover::var_info is used to map the Rover::g location, name, default value and type to EEPROM.
+
+const AP_Param::Info Rover::var_info[] = { //!Instead of initializing it in Rover.cpp, it is initialized here in Parameters.cpp
     // @Param: FORMAT_VERSION
     // @DisplayName: Eeprom format version number
     // @Description: This value is incremented when changes are made to the eeprom format
     // @User: Advanced
     GSCALAR(format_version,         "FORMAT_VERSION",   1),
+
+    //!GSCALAR(variable_suffix,           "variable_suffix",                       default_value)
+    //!        LOCATION                   NAME                                     UNION DEF VALUE
+    //!        &rover.g.variable_suffix, "Parameters::k_param_variable_suffix",    default_value
 
     // @Param: LOG_BITMASK
     // @DisplayName: Log bitmask
@@ -735,8 +761,8 @@ ParametersG2::ParametersG2(void)
 #if AP_BEACON_ENABLED
     beacon(),
 #endif
-    wheel_rate_control(wheel_encoder),
-    motors(wheel_rate_control),
+    wheel_rate_control(wheel_encoder), //!To control wheel rate the sensor is required, which must be iniitialized first and injected as a dependency.
+    motors(wheel_rate_control), //!Motors actuate the wheel rate, which is a dependency that must be passed to it.
     attitude_control(),
     smart_rtl(),
 #if HAL_PROXIMITY_ENABLED

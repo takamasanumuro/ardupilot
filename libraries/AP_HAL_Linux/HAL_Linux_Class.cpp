@@ -262,7 +262,7 @@ static CANIface* canDrivers[HAL_NUM_CAN_IFACES];
 #endif
 
 HAL_Linux::HAL_Linux() :
-    AP_HAL::HAL(
+    AP_HAL::HAL( //!Calls base constructor using driver implementation instances
         &serial0Driver,
         &serial1Driver,
         &serial2Driver,
@@ -473,12 +473,12 @@ void HAL_Linux::run(int argc, char* const argv[], Callbacks* callbacks) const
     // teardown.
     // This isn't perfect, but still prevents an unkillable process.
 
-    scheduler->init();
+    scheduler->init(); //!Inits timer, uart, rc threads
     gpio->init();
     rcout->init();
     rcin->init();
     serial(0)->begin(115200);
-    analogin->init();
+    analogin->init(); //!Initializes ADC driver (periodic callback) and registers timer process to transfer samples into AnalogSource objects
     utilInstance.init(argc+gopt.optind-1, &argv[gopt.optind-1]);
 
     // NOTE: See commit 9f5b4ffca ("AP_HAL_Linux_Class: Correct
@@ -525,7 +525,7 @@ void HAL_Linux::setup_signal_handlers() const
     sigaction(SIGINT, &sa, NULL);
 }
 
-HAL_Linux hal_linux;
+HAL_Linux hal_linux; //!Constructor injects driver implementations to the base class here
 
 void HAL_Linux::exit_signal_handler(int signum)
 {

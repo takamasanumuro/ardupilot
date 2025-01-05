@@ -107,7 +107,7 @@ bool FlashTest::flash_erase(uint8_t sector)
     if (sector > 1) {
         AP_HAL::panic("FATAL: erase sector %u\n", (unsigned)sector);
     }
-    memset(&flash[sector][0], 0xFF, flash_sector_size);
+    memset(&flash[sector][0], 0xFF, flash_sector_size); //!Erase state is 0xFF 
     return true;
 }
 

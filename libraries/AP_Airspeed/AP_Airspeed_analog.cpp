@@ -36,6 +36,7 @@ AP_Airspeed_Analog::AP_Airspeed_Analog(AP_Airspeed &_frontend, uint8_t _instance
     _source = hal.analogin->channel(get_pin());
 }
 
+
 bool AP_Airspeed_Analog::init()
 {
     return _source != nullptr;

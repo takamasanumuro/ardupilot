@@ -119,6 +119,7 @@ void AP_NMEA_Output::update()
     const auto &gps = AP::gps();
     const AP_GPS::GPS_Status gps_status = gps.status();
 
+//!Location can be obtained from GPS or AHRS
 #if AP_AHRS_ENABLED
     auto &ahrs = AP::ahrs();
     // NOTE: ahrs.get_location() always returns true after having GPS position once because it will be dead-reckoning

@@ -43,15 +43,16 @@ AP_FlashStorage::AP_FlashStorage(uint8_t *_mem_buffer,
     flash_erase(_flash_erase),
     flash_erase_ok(_flash_erase_ok) {}
 
-// initialise storage
-bool AP_FlashStorage::init(void)
+// initialise storage //! Checks sector headers for validity and loads data from sectors
+bool AP_FlashStorage::init(void) //!Called from _flash_load() when first initializing _storage_open() by [read|write]_block
 {
     debug("running init()\n");
 
     // start with empty memory buffer
     memset(mem_buffer, 0, storage_size);
 
-    // find state of sectors
+    //!Partition of 256kB defined in partitions.csv
+    // find state of sectors 
     struct sector_header header[2];
 
     // read headers and possibly initialise if bad signature
@@ -59,6 +60,8 @@ bool AP_FlashStorage::init(void)
         if (!flash_read(i, 0, (uint8_t *)&header[i], sizeof(header[i]))) {
             return false;
         }
+
+        //!Check both signature and state sector value to see if header is bad
         bool bad_header = !header[i].signature_ok();
         enum SectorState state = header[i].get_state();
         if (state != SECTOR_STATE_AVAILABLE &&
@@ -77,6 +80,9 @@ bool AP_FlashStorage::init(void)
     enum SectorState states[2] {header[0].get_state(), header[1].get_state()};
     uint8_t first_sector;
 
+    
+
+    //!Prioritize the sector that is already full or in use to load into mem_buffer
     if (states[0] == states[1]) {
         if (states[0] != SECTOR_STATE_AVAILABLE) {
             return erase_all();
@@ -173,19 +179,18 @@ bool AP_FlashStorage::protected_switch_full_sector(void)
     return switch_sectors();
 }
 
-// write some data to virtual EEPROM
-bool AP_FlashStorage::write(uint16_t offset, uint16_t length)
-{
+// write some data to virtual EEPROM //!Offset is passed as line from dirty_mask and length is the size of a line
+bool AP_FlashStorage::write(uint16_t offset, uint16_t length) {
     if (write_error) {
         return false;
     }
     //debug("write at %u for %u write_offset=%u\n", offset, length, write_offset);
     
     while (length > 0) {
-        uint8_t n = max_write;
+        uint8_t currentWriteSize = max_write;
 #if AP_FLASHSTORAGE_TYPE != AP_FLASHSTORAGE_TYPE_H7 && AP_FLASHSTORAGE_TYPE != AP_FLASHSTORAGE_TYPE_G4
-        if (length < n) {
-            n = length;
+        if (length < currentWriteSize) {
+            currentWriteSize = length; //!Some architectures allow less than max_write to be written
         }
 #endif
 
@@ -209,14 +214,16 @@ bool AP_FlashStorage::write(uint16_t offset, uint16_t length)
 
         blk.header.state = BLOCK_STATE_WRITING;
         blk.header.block_num = offset / block_size;
-        blk.header.num_blocks_minus_one = ((n + (block_size - 1)) / block_size)-1;
+        blk.header.num_blocks_minus_one = ((currentWriteSize + (block_size - 1)) / block_size) - 1; //!Rounds up to nearest block size
 
-        uint16_t block_ofs = blk.header.block_num*block_size;
-        uint16_t block_nbytes = (blk.header.num_blocks_minus_one+1)*block_size;
+        uint16_t block_ofs = blk.header.block_num * block_size; //!Provided offset is converted to block offset
+        uint16_t block_nbytes = (blk.header.num_blocks_minus_one + 1) * block_size;
 
+        //!When program wants to store data, it updates the buffer and sets the corresponding dirty mask bit(fast operation)
+        //!The storage thread then checks for set bits and calls the flash manager to write the data using provided callbacks (slow operation)
         memcpy(blk.data, &mem_buffer[block_ofs], block_nbytes);
 
-#if AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_F4
+#if AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_F4 //!Partial header, then data, then valid header
         if (!flash_write(current_sector, write_offset, (uint8_t*)&blk.header, sizeof(blk.header))) {
             return false;
         }
@@ -227,13 +234,13 @@ bool AP_FlashStorage::write(uint16_t offset, uint16_t length)
         if (!flash_write(current_sector, write_offset, (uint8_t*)&blk.header, sizeof(blk.header))) {
             return false;
         }
-#elif AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_F1
+#elif AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_F1 //!Valid header + block_nbytes at same time
         blk.header.state = BLOCK_STATE_VALID;
         if (!flash_write(current_sector, write_offset, (uint8_t*)&blk, sizeof(blk.header) + block_nbytes)) {
             return false;
         }
 #elif AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_H7 || AP_FLASHSTORAGE_TYPE == AP_FLASHSTORAGE_TYPE_G4
-        blk.header.state = BLOCK_STATE_VALID;
+        blk.header.state = BLOCK_STATE_VALID; //!Valid header + max_write at same time
         if (!flash_write(current_sector, write_offset, (uint8_t*)&blk, sizeof(blk.header) + max_write)) {
             return false;
         }
@@ -263,8 +270,8 @@ bool AP_FlashStorage::write(uint16_t offset, uint16_t length)
  */
 bool AP_FlashStorage::load_sector(uint8_t sector)
 {
-    uint32_t ofs = sizeof(sector_header);
-    while (ofs < flash_sector_size - sizeof(struct block_header)) {
+    uint32_t ofs = sizeof(sector_header); //!State sector and signature
+    while (ofs < flash_sector_size - sizeof(struct block_header)) { //!First element is a sector header, last element is a block header
         struct block_header header;
         if (!flash_read(sector, ofs, (uint8_t *)&header, sizeof(header))) {
             return false;
@@ -274,20 +281,11 @@ bool AP_FlashStorage::load_sector(uint8_t sector)
         switch (state) {
         case BLOCK_STATE_AVAILABLE:
             // we've reached the end
-            write_offset = ofs;
+            write_offset = ofs; 
             return true;
 
-        case BLOCK_STATE_WRITING: {
-            /*
-              we were interrupted while writing a block. We can't
-              re-use the data in this block as it may have some bits
-              that are not set to 1, so by flash rules can't be set to
-              an arbitrary value. So we skip over this block, leaving
-              a gap. The gap size is limited to (7+1)*8=64 bytes. That
-              gap won't be recovered until we next do an erase of this
-              sector
-             */
-            uint16_t block_nbytes = (header.num_blocks_minus_one+1)*block_size;
+        case BLOCK_STATE_WRITING: { //!Skip block if interrupted while writing
+            uint16_t block_nbytes = (header.num_blocks_minus_one + 1) * block_size;
             ofs += block_nbytes + sizeof(header);
             break;
         }
@@ -302,7 +300,6 @@ bool AP_FlashStorage::load_sector(uint8_t sector)
             if (!flash_read(sector, ofs+sizeof(header), &mem_buffer[block_ofs], block_nbytes)) {
                 return false;
             }
-            //debug("read at %u for %u\n", block_ofs, block_nbytes);
             ofs += block_nbytes + sizeof(header);
             break;
         }
@@ -325,7 +322,7 @@ bool AP_FlashStorage::load_sector(uint8_t sector)
 /*
   erase one sector
  */
-bool AP_FlashStorage::erase_sector(uint8_t sector, bool mark_available)
+bool AP_FlashStorage::erase_sector(uint8_t sector, bool mark_available) //!Erases sector using provided callback and optionally marks it as available
 {
     if (!flash_erase(sector)) {
         return false;
@@ -341,7 +338,7 @@ bool AP_FlashStorage::erase_sector(uint8_t sector, bool mark_available)
 /*
   erase both sectors
  */
-bool AP_FlashStorage::erase_all(void)
+bool AP_FlashStorage::erase_all(void) //!Sector erase when bad header is found
 {
     write_error = false;
 
@@ -364,15 +361,16 @@ bool AP_FlashStorage::erase_all(void)
 /*
   write all of mem_buffer to current sector
  */
-bool AP_FlashStorage::write_all()
+bool AP_FlashStorage::write_all() //!Writes memory buffer to sector iterating over max_write blocks
 {
     debug("write_all to sector %u at %u with reserved_space=%u\n",
            current_sector, write_offset, reserved_space);
-    for (uint16_t ofs=0; ofs<storage_size; ofs += max_write) {
+    for (uint16_t ofs = 0; ofs < storage_size; ofs += max_write) {
         // local variable needed to overcome problem with MIN() macro and -O0
         const uint8_t max_write_local = max_write;
-        uint8_t n = MIN(max_write_local, storage_size-ofs);
-        if (!all_zero(ofs, n)) {
+        uint8_t n = MIN(max_write_local, storage_size - ofs); //!Remainder must be calculated as iteration is not guaranteed to be a multiple of max_write
+        //!A few bytes more than the remainder might be written depending on the block size
+        if (!all_zero(ofs, n)) { //!Skip writing if all bytes within max_write are zero
             if (!write(ofs, n)) {
                 return false;
             }
@@ -407,7 +405,7 @@ bool AP_FlashStorage::switch_sectors(void)
     debug("switching to sector %u\n", new_sector);
     
     // check sector is available
-    if (!flash_read(new_sector, 0, (uint8_t *)&header, sizeof(header))) {
+    if (!3(new_sector, 0, (uint8_t *)&header, sizeof(header))) { //!Reading sector header
         return false;
     }
     if (!header.signature_ok()) {
